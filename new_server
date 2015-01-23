@@ -1,0 +1,74 @@
+#include<netinet/in.h> 
+#include<sys/types.h>  
+#include<sys/socket.h>  
+#include<stdio.h>  
+#include<stdlib.h>  
+#include<string.h> 
+
+#include "MessageCheck.h" 
+#include "socketStruct.h"
+
+#define SERVER_PORT 8080 
+#define LENGTH_OF_LISTEN_QUEUE 20 
+#define BUFFER_SIZE 1024*80
+#define FILE_NAME_lENGTH 20 
+
+
+ struct sockaddr_in server_addr,client_addr;
+ int opt = 1; 
+ char file_name[FILE_NAME_lENGTH]; 
+ char buffer[BUFFER_SIZE]; 
+ int length = 0; 
+
+void ReadSendFile(int new_server_socket_fd,FILE *fp)
+{
+    bzero(buffer, BUFFER_SIZE); 
+    while((length = fread(buffer, sizeof(char), BUFFER_SIZE, fp)) > 0)
+    { 
+        if(send(new_server_socket_fd, buffer, length, 0) < 0) 
+        { 
+           printf("Send File:%s Failed./n", file_name);  
+           return;
+        } 
+        bzero(buffer, BUFFER_SIZE); 
+     } 
+}
+
+
+
+void main() 
+{ 
+   server_addr=InitSocketStruct(server_addr,8080);
+   int server_socket_fd = socket(PF_INET, SOCK_STREAM, 0); 
+   socket_fdCheck(server_socket_fd);
+      
+   setsockopt(server_socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); 
+ 
+   bindCheck(bind(server_socket_fd,(struct sockaddr*)&server_addr, sizeof(server_addr)));
+   
+   listenCheck(listen(server_socket_fd, LENGTH_OF_LISTEN_QUEUE));  
+   socklen_t client_addr_length = sizeof(client_addr); 
+ 
+   int new_server_socket_fd = accept(server_socket_fd, (struct sockaddr*)&client_addr, &client_addr_length); 
+   acceptCheck(new_server_socket_fd);
+ 
+   bzero(file_name, FILE_NAME_lENGTH); 
+ 
+   if(recv(new_server_socket_fd, file_name, FILE_NAME_lENGTH, 0) < 0) 
+   { 
+       perror("Server Recieve Data Failed:"); 
+       return;
+   } 
+    
+   printf("%s\n", file_name); 
+   FILE *fp = fopen(file_name, "r"); 
+   fileOpenCheck(fp,file_name);
+		
+   ReadSendFile(new_server_socket_fd,fp);
+   fclose(fp); 
+   printf("File:%s Transfer Successful!\n", file_name); 
+   close(new_server_socket_fd); 
+   close(server_socket_fd); 
+   return; 
+} 
+
